@@ -35,6 +35,7 @@ require('./app/routes/admin.route')(app)
 require('./app/routes/participant.route')(app)
 require('./app/routes/question.route')(app)
 require('./app/routes/game.route')(app)
+require('./app/routes/gift.route')(app)
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {

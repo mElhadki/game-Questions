@@ -5,7 +5,7 @@ let Round = require("../models/round.model")
 let SessionUser = require("../models/sessionUser.model");
 let SessionGroup = require("../models/sessionGroup.model");
 let Participant = require('../models/participant.model')
-
+let Gift = require('../models/gift.model')
 exports.creategroup = (req, res) => {
     SessionUser.findOne({ idUser: req.idParticpant, isOwner: true }).then(async (session) => {
         if (session == null) {
@@ -98,33 +98,34 @@ exports.joinGroup = (req, res) => {
     })
 }
 
-exports.creeatRound = (req, res) => {
+exports.creeatRound = async (req, res) => {
     let idGroup = req.params.idGroup;
     let question;
-    let idPlayer;
-    Round.findOne({ idGroup: idGroup }).then((round) => {
+    await Round.findOne({ idGroup: idGroup }).then(async (round) => {
         if (round == null) {
-            Question.findRandom({}, {}, { limit: 15 }, function (err, results) {
+            await Question.findRandom({}, {}, { limit: 15 }, async function (err, results) {
                 question = {
                     ...results
                 }
-                Group.findOne({ _id: req.params.idGroup }).then((group) => {
+                await Group.findOne({ _id: req.params.idGroup }).then(async (group) => {
 
 
                     let roundPush = new Round({
                         idGroup,
                         question,
                     })
-                    roundPush.save().then((round) => res.json({
+                    await roundPush.save().then((round) => res.json({
                         instruction: "Bonjour dans votre round pour demarrer votre round veuillez entrer ce lien",
-                        lien: `localhost:8080/game/:${round._id}&q1`
+                        lien: `http://localhost:8080/game/${round._id}&q1`
                     })).catch((err) => res.json(err))
                 })
             });
         }
         else {
 
-            res.json("bonjour dans votre round");
+            Round.findOne({ idGroup: idGroup }).then((round) => {
+                res.redirect(`http://localhost:8080/game/${round._id}&q1`)
+            })
 
         }
     }).catch((err) => res.send(err))
@@ -175,7 +176,7 @@ exports.postgame = async (req, res) => {
     let indexQuestion = parseInt(question.substring(1)) - 1;
     let answer = req.body.answer;
     if (parseInt(question.substring(1)) + 1 >= 16) {
-        res.redirect()
+        res.redirect(`http://localhost:8080/game/result/${roundId}`)
     }
     else {
         if (!answer) {
@@ -205,11 +206,82 @@ exports.postgame = async (req, res) => {
     }
 }
 
-exports.resultRound = (req, res) => {
+exports.resultRound = async (req, res) => {
     let roundId = req.params.roundId;
-    
-    Round.findOne({_id : roundId}).then((round) => {
-        let participantArr = [];
-        Group.findOne({_id : round.idGroup}).then()
+    await Round.findOne({ _id: roundId }).then(async (round) => {
+        await Group.findOne({ _id: round.idGroup }).then(async (user) => {
+            let participantArr = [];
+            for (let i = 0; i < user.id_joining.length; i++) {
+                participantArr.push(user.id_joining[i])
+            }
+            participantArr.push(user.id_owner);
+            let scoreArr = [];
+            let nameArr = [];
+            for (let i = 0; i < participantArr.length; i++) {
+                await Participant.findById(participantArr[i]).then((users) => {
+                    scoreArr.push(users.scoreTemp)
+                    nameArr.push(users.username)
+                })
+            }
+            let scoreBoard = scoreArr.sort(function (a, b) {
+                return a - b;
+            });
+            let indexOfWinner = scoreArr.indexOf(scoreBoard[3]);
+            await Participant.findById(req.idParticpant).then(async (score) => {
+                let scoreId = score.scoreTemp;
+                let status;
+                await Gift.findRandom({}, {}, { limit: 1 }, async function (err, results) {
+                    var data = { results };
+                    let gift;
+                    if (scoreId === scoreBoard[3]) {
+                        status = true
+                        gift = data.results[0].gift;
+                    }
+                    else {
+                        status = false
+                        gift = "aucune"
+                    }
+
+                    res.json(
+                        {
+                            scoreBoard: {
+                                winner: nameArr[indexOfWinner],
+                                score_Winner: scoreBoard[3],
+                                your_score: scoreId,
+                                your_gift : gift,
+                                are_you_winner: status
+                            }
+                        })
+                })
+
+            })
+        })
+    })
+}
+
+exports.exitGame = async (req, res) => {
+    let groupId = req.params.groupId;
+    let usersArray = [];
+
+    await Group.findById(groupId).then(async (group) => {
+        for (let i = 0; i < group.id_joining.length; i++) {
+            await usersArray.push(group.id_joining[i])
+        }
+        await usersArray.push(group.id_owner)
+        await Round.findOneAndDelete({ idGroup: groupId })
+        await SessionGroup.findOneAndDelete({ idGroup: groupId })
+        await SessionUser.findOneAndDelete({ idUser: usersArray[3] })
+        for (let i = 0; i < usersArray.length; i++) {
+            await Participant.findByIdAndUpdate(usersArray[i], { scoreTemp: 0 })
+        }
+        await Group.findByIdAndDelete(groupId).then(() => {
+            res.redirect("http://localhost:8080/game/lobby")
+        })
+    })
+}
+
+exports.lobby = (req, res) => {
+    res.json({
+        message: "Fin de jeu bienvenue a votre lobby"
     })
 }

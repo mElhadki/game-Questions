@@ -29,17 +29,13 @@ const Question = new Schema(
         point: {
             type: Number,
             minlenght: 1,
+            default: 0,
             required: true,
         },
         valid: {
             type:Boolean,
             default : true
         },
-        reponse:{
-            type: String,
-            trim: true,
-            minlenght: 3,
-        }
     },
     {
         versionKey: false

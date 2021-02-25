@@ -15,9 +15,8 @@ exports.participant = (req, res, next) => {
                 auth: false,
                 message: 'false token'
             });
-            if(decoded.participant == false){
+            if(decoded.participant == false || decoded.participant == undefined){
                 return res.status(403).send({
-                    auth: false,
                     message: 'not authorized ...'
                 });
             }

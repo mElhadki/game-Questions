@@ -16,9 +16,8 @@ exports.superadmin = (req, res, next) => {
                 message: 'false token'
             });
 
-        else if (decoded.superadmin == false) {
+        else if (decoded.superadmin == false || decoded.superadmin == undefined) {
             return res.status(500).send({
-                auth: false,
                 message: 'not authorized'
             });
         } else {
