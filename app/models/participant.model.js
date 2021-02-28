@@ -39,7 +39,10 @@ const Participant = new Schema(
             type: Boolean,
             default: false
         },
+        
         scoreTemp : {
+
+            default:0,
             type: Number,
             trim: true,
             minlenght: 1,

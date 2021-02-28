@@ -7,8 +7,7 @@ exports.create = (req, res) => {
         question : req.body.question,
         trueAnswer : req.body.trueanswer,
         falseAnswer : [req.body.falseanswer1, req.body.falseanswer2, req.body.falseanswer3],
-        point : req.body.point,
-        reponse : req.body.reponse
+        point : req.body.point
     })
     pushQuestion.save()
         .then((question) => res.status(201).json(question))

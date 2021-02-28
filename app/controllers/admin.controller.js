@@ -15,13 +15,13 @@ exports.validaccount =  (req, res) => {
             port: 465,
             secure: true, // true for 465, false for other ports
             auth: {
-                user: "gitshopllc@gmail.com", // generated ethereal user
-                pass: "0646274243", // generated ethereal password
+                user: "elhadkimariem3@gmail.com", // generated ethereal user
+                pass: "Eminem1996", // generated ethereal password
             },
         })
         // send mail with defined transport object
         let info = await transporter.sendMail({
-            from: '"WHO WIN 1M ✈️" <gitshopllc@gmail.com>', // sender address
+            from: '"WHO WIN 1M ✈️" <elhadkimariem3@gmail.com>', // sender address
             to: data.email, // list of receivers
             subject: "Confirmation de COMPTE !", // Subject line
             text: "Reserved !", // plain text body

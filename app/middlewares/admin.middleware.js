@@ -1,6 +1,7 @@
 let config = require("../config/secretJwt.config");
 let jwt = require('jsonwebtoken');
 
+
 exports.superadmin = (req, res, next) => {
     var token = req.headers['x-access-token'];
     if (!token)

@@ -38,6 +38,8 @@ require('./app/routes/game.route')(app)
 require('./app/routes/gift.route')(app)
 
 const port = process.env.PORT || 8080;
+
+module.exports =
 app.listen(port, () => {
   console.log(`app listening at http://localhost:${port}`)
 })

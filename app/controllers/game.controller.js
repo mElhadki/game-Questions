@@ -6,6 +6,7 @@ let SessionUser = require("../models/sessionUser.model");
 let SessionGroup = require("../models/sessionGroup.model");
 let Participant = require('../models/participant.model')
 let Gift = require('../models/gift.model')
+
 exports.creategroup = (req, res) => {
     SessionUser.findOne({ idUser: req.idParticpant, isOwner: true }).then(async (session) => {
         if (session == null) {
