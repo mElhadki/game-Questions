@@ -15,8 +15,8 @@ exports.validaccount =  (req, res) => {
             port: 465,
             secure: true, // true for 465, false for other ports
             auth: {
-                user: "elhadkimariem3@gmail.com", // generated ethereal user
-                pass: "Eminem1996", // generated ethereal password
+                user: "", // generated ethereal user
+                pass: "", // generated ethereal password
             },
         })
         // send mail with defined transport object
