@@ -36,6 +36,7 @@ require('./app/routes/participant.route')(app)
 require('./app/routes/question.route')(app)
 require('./app/routes/game.route')(app)
 require('./app/routes/gift.route')(app)
+require('./app/routes/token.route')(app)
 
 const port = process.env.PORT || 8080;
 

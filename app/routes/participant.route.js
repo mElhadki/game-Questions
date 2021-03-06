@@ -6,4 +6,3 @@ module.exports = app => {
     router.route("/valid/:id").get(participantController.confirmaccount);
     app.use('/participant', router)
 }
-

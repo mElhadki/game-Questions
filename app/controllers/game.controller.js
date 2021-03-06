@@ -7,8 +7,8 @@ let SessionGroup = require("../models/sessionGroup.model");
 let Participant = require('../models/participant.model')
 let Gift = require('../models/gift.model')
 
-exports.creategroup = (req, res) => {
-    SessionUser.findOne({ idUser: req.idParticpant, isOwner: true }).then(async (session) => {
+exports.creategroup = async (req, res) => {
+   await SessionUser.findOne({ idUser: req.idParticpant, isOwner: true }).then(async (session) => {
         if (session == null) {
             let code = uniqid('CODE-');
             let id_owner = req.idParticpant;
@@ -21,7 +21,10 @@ exports.creategroup = (req, res) => {
                 .then(async (group) => {
                     var sessionUser = new SessionUser({
                         idUser: req.idParticpant,
-                        isOwner: true
+                        isOwner: true,
+                        code: code,
+                        idGroup : group._id,
+                        idRound : "waiting"
                     })
                     var sessionGroup = new SessionGroup({
                         idGroup: group._id,
@@ -30,73 +33,86 @@ exports.creategroup = (req, res) => {
                     })
                     await sessionGroup.save()
                     await sessionUser.save().then(() => {
-                        function interval() {
-                            Round.findOne({ idGroup: group._id }).then((round) => {
-                                if (round != null) {
-                                    clearInterval(this);
-                                    res.redirect("http://localhost:8080/game/createRound/" + round.idGroup)
-                                }
-                            }).catch((err) => res.json(err))
-                        }
-                        setInterval(interval, 2000);
+                        res.status(201).json({ code: code })
                     })
 
                 })
                 .catch((err) => res.status(500).json(err))
         }
         else {
-            res.json("tu as deja creer un groupe")
+            res.json({ error: "tu as deja creer un groupe" })
         }
     })
 
 }
-
-exports.joinGroup = (req, res) => {
-    Group.findOne({ id_owner: req.idParticpant }).then(async (group) => {
+exports.owner = async (req, res) => {
+    await SessionUser.findOne({ idUser: req.idParticpant }).then((session) => res.json(session))
+}
+exports.isFull = async (req, res) => {
+    await SessionGroup.findOne({ code: req.params.code }).then((session) => res.json(session))
+}
+exports.joinGroup = async (req, res) => {
+    await Group.findOne({ code: req.params.code }).then(async (group) => {
         if (group == null) {
-            await Group.findOne({ id_joining: req.idParticpant }).then(async (group) => {
+            res.json({ error: "code invalid" });
+        }
+        else {
+            await Group.findOne({ id_owner: req.idParticpant }).then(async (group) => {
                 if (group == null) {
-                    await Group.findOne({ code: req.params.code }).then((group) => {
-                        // @ts-ignore
-                        if (group.id_joining.length >= 3) {
-                            res.json("group est plein")
+                    await Group.findOne({ id_joining: req.idParticpant }).then(async (group) => {
+                        if (group == null) {
+                            await Group.findOne({ code: req.params.code }).then((group) => {
+                                // @ts-ignore
+                                if (group.id_joining.length >= 3) {
+                                    res.json({ error: "group est plein" })
+                                }
+                                else {
+                                    Group.updateOne({ code: req.params.code }, { $push: { id_joining: req.idParticpant } })
+                                        .then(async () => {
+                                            await Group.findOne({ code: req.params.code }).then(async (group) => {
+                                                if (group.id_joining.length === 3) {
+                                                    var sessionUser = new SessionUser({
+                                                        idUser: req.idParticpant,
+                                                        isOwner: false,
+                                                        code: req.params.code,
+                                                        idGroup : group._id,
+                                                        idRound : "waiting",
+                                                    })
+                                                    await sessionUser.save()
+                                                  await  SessionGroup.findOne({ code: req.params.code }).then(async (group) => {
+                                                        await SessionGroup.updateOne({ code: group.code }, { isFull: true })
+                                                        res.redirect("http://localhost:8080/game/createRound/" + group.idGroup);
+                                                    })
+                                                }
+                                                else {
+                                                    var sessionUser = new SessionUser({
+                                                        idUser: req.idParticpant,
+                                                        isOwner: false,
+                                                        code: req.params.code,
+                                                        idGroup : group._id,
+                                                        idRound : "waiting",
+                                                    })
+                                                    await sessionUser.save()
+                                                    res.json({ code: req.params.code })
+                                                }
+                                            })
+                                        })
+                                        .catch((err) => res.json(err))
+                                }
+                            })
                         }
                         else {
-                            Group.updateOne({ code: req.params.code }, { $push: { id_joining: req.idParticpant } })
-                                .then(async () => {
-                                    await Group.findOne({ code: req.params.code }).then(async (group) => {
-                                        if (group.id_joining.length === 3) {
-                                            SessionGroup.findOne({ code: req.params.code }).then(async (group) => {
-                                                await SessionGroup.updateOne({ code: group.code }, { isFull: true })
-                                                res.redirect("http://localhost:8080/game/createRound/" + group.idGroup);
-                                            })
-                                        }
-                                        else {
-                                            function interval() {
-                                                Round.findOne({ idGroup: group._id }).then((round) => {
-                                                    if (round != null) {
-                                                        clearInterval(this);
-                                                        res.redirect("http://localhost:8080/game/createRound/" + round.idGroup)
-                                                    }
-                                                }).catch((err) => res.json(err))
-                                            }
-                                            setInterval(interval, 2000);
-                                        }
-                                    })
-                                })
-                                .catch((err) => res.json(err))
+                            res.json({ error: "tu es deja inscrit a ce group" });
                         }
                     })
                 }
                 else {
-                    res.json("tu es deja inscrit a ce group");
+                    res.json({ error: "tu es deja le createur de group" })
                 }
             })
         }
-        else {
-            res.json("tu es deja le createur de group")
-        }
     })
+
 }
 
 exports.creeatRound = async (req, res) => {
@@ -115,20 +131,15 @@ exports.creeatRound = async (req, res) => {
                         idGroup,
                         question,
                     })
-                    await roundPush.save().then((round) => res.json({
-                        instruction: "Bonjour dans votre round pour demarrer votre round veuillez entrer ce lien",
-                        lien: `http://localhost:8080/game/${round._id}&q1`
-                    })).catch((err) => res.json(err))
+                    await roundPush.save().then(async (round) => {
+                       await SessionUser.update({idGroup : idGroup}, {"$set" : {"idRound" : round._id}}, {"multi": true})
+                       await SessionGroup.updateOne({ idGroup: idGroup }, { roundId: round._id }).then(() => res.json(idGroup))
+                    }).catch((err) => res.json(err))
                 })
             });
         }
-        else {
-
-            Round.findOne({ idGroup: idGroup }).then((round) => {
-                res.redirect(`http://localhost:8080/game/${round._id}&q1`)
-            })
-
-        }
+       
+     
     }).catch((err) => res.send(err))
 
 }
@@ -140,7 +151,7 @@ exports.game = (req, res) => {
 
     Round.findOne({ _id: roundId }).then((round) => {
         if (round == null) {
-            res.json("round invalid")
+            res.json({error : "round invalid"})
         }
         else {
             if (round.question[indexQuestion].valid == true) {
@@ -154,7 +165,7 @@ exports.game = (req, res) => {
                     scoree = score.scoreTemp
                     res.json({
                         votre_Score: scoree,
-                        question: `question Numero ${parseInt(question.substring(1))} : ` + round.question[indexQuestion].question,
+                        question: `Question Number: ${parseInt(question.substring(1))} : ` + round.question[indexQuestion].question,
                         first_answer: answers[0],
                         second_answer: answers[1],
                         third_answer: answers[2],
@@ -164,7 +175,7 @@ exports.game = (req, res) => {
 
             }
             else {
-                res.json("question expiré !");
+                res.json({expired : true});
             }
 
         }
@@ -177,28 +188,43 @@ exports.postgame = async (req, res) => {
     let indexQuestion = parseInt(question.substring(1)) - 1;
     let answer = req.body.answer;
     if (parseInt(question.substring(1)) + 1 >= 16) {
+        await Round.findOne({ _id: roundId }).then(async (round) => {
+            if (round.question[indexQuestion].valid == true) {
+                if (answer === round.question[indexQuestion].trueAnswer) {
+                    await Participant.updateOne({ _id: req.idParticpant }, { $inc: { scoreTemp: round.question[indexQuestion].point } }).then(async () => {
+                        await Round.findOneAndUpdate({ _id: roundId }, { ["question." + indexQuestion + ".valid"]: false })
+                    })
+                }
+                else {
+                    await Round.findOneAndUpdate({ _id: roundId }, { ["question." + indexQuestion + ".valid"]: false })
+                }
+            }
+            else {
+                res.json({ error: "question expiré" })
+
+            }
+
+        })
         res.redirect(`http://localhost:8080/game/result/${roundId}`)
     }
     else {
         if (!answer) {
-            res.json("svp entrez la reponse");
+            res.json({ error: "svp entrez la reponse" });
         }
         else {
             await Round.findOne({ _id: roundId }).then(async (round) => {
                 if (round.question[indexQuestion].valid == true) {
                     if (answer === round.question[indexQuestion].trueAnswer) {
                         await Participant.updateOne({ _id: req.idParticpant }, { $inc: { scoreTemp: round.question[indexQuestion].point } }).then(async () => {
-                            await Round.findOneAndUpdate({ _id: roundId }, { ["question." + indexQuestion + ".valid"]: false }).then(() => res.redirect(`http://localhost:8080/game/${roundId}&q${parseInt(question.substring(1)) + 1}`)
-                            )
+                            await Round.findOneAndUpdate({ _id: roundId }, { ["question." + indexQuestion + ".valid"]: false })
                         })
                     }
                     else {
-                        await Round.findOneAndUpdate({ _id: roundId }, { ["question." + indexQuestion + ".valid"]: false }).then(() => res.redirect(`http://localhost:8080/game/${roundId}&q${parseInt(question.substring(1)) + 1}`)
-                        )
+                        await Round.findOneAndUpdate({ _id: roundId }, { ["question." + indexQuestion + ".valid"]: false })
                     }
                 }
                 else {
-                    res.json("question expiré")
+                    res.json({ error: "question expiré" })
 
                 }
 
@@ -249,7 +275,7 @@ exports.resultRound = async (req, res) => {
                                 winner: nameArr[indexOfWinner],
                                 score_Winner: scoreBoard[3],
                                 your_score: scoreId,
-                                your_gift : gift,
+                                your_gift: gift,
                                 are_you_winner: status
                             }
                         })
@@ -272,6 +298,9 @@ exports.exitGame = async (req, res) => {
         await Round.findOneAndDelete({ idGroup: groupId })
         await SessionGroup.findOneAndDelete({ idGroup: groupId })
         await SessionUser.findOneAndDelete({ idUser: usersArray[3] })
+        await SessionUser.findOneAndDelete({ idUser: usersArray[2] })
+        await SessionUser.findOneAndDelete({ idUser: usersArray[1] })
+        await SessionUser.findOneAndDelete({ idUser: usersArray[0] })
         for (let i = 0; i < usersArray.length; i++) {
             await Participant.findByIdAndUpdate(usersArray[i], { scoreTemp: 0 })
         }

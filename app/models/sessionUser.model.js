@@ -14,6 +14,21 @@ const SessionUser = new Schema(
             trim: true,
             required : true,
         },
+        code:{
+            type: String,
+            trim: true,
+            minlenght: 10,
+        },
+        idGroup :{
+            type: String,
+            trim: true,
+            minlenght: 10,
+        },
+        idRound :{
+            type: String,
+            trim: true,
+            minlenght: 10,
+        }
     },
     {
         versionKey: false

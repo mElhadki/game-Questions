@@ -4,19 +4,20 @@ let jwt = require('jsonwebtoken');
 exports.participant = (req, res, next) => {
     var token = req.headers['x-access-token'];
     if (!token)
-        return res.status(403).send({
+        return res.send({
             auth: false,
             message: 'token please ...'
         });
 
     jwt.verify(token, config.secret, function (err, decoded) {
         if (err)
-            return res.status(500).send({
+            return res.send({
                 auth: false,
                 message: 'false token'
             });
             if(decoded.participant == false || decoded.participant == undefined){
-                return res.status(403).send({
+                return res.send({
+                    auth: false,
                     message: 'not authorized ...'
                 });
             }

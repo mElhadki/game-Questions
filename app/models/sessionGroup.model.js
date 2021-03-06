@@ -14,6 +14,11 @@ const SessionGroup = new Schema(
             trim: true,
             minlenght: 10,
         },
+        roundId : {
+            type: String,
+            trim: true,
+            minlenght: 10,
+        },
         isFull: {
             type: Boolean,
             trim: true,
